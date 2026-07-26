@@ -50,4 +50,3 @@ appimage-build/
 /libs/
 /vcpkg_installed/
 3ds/build/
-3ds/external/luajit/

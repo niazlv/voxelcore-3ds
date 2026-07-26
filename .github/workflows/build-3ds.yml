@@ -1,0 +1,32 @@
+name: 3DS Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-3ds:
+    name: 3DS Build
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitarm:latest
+    steps:
+      - name: Install 32-bit host toolchain (for LuaJIT buildvm)
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq gcc-multilib libc6-dev-i386
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+      - name: Build LuaJIT
+        run: bash 3ds/build_luajit.sh
+      - name: Configure
+        run: /opt/devkitpro/portlibs/3ds/bin/arm-none-eabi-cmake -B 3ds/build -S 3ds -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build 3ds/build -- -j$(nproc)
+      - name: Upload 3dsx
+        uses: actions/upload-artifact@v4
+        with:
+          name: voxelcore3ds
+          path: 3ds/build/voxelcore3ds.3dsx

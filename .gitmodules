@@ -6,3 +6,7 @@
 	path = 3ds/external/glm
 	url = https://github.com/g-truc/glm.git
 	shallow = true
+[submodule "3ds/external/luajit"]
+	path = 3ds/external/luajit
+	url = https://github.com/LuaJIT/LuaJIT.git
+	shallow = true
