@@ -1,236 +1,113 @@
-# ![voxel-core](dev/VoxelCore.png) VoxelCore
+# ![voxel-core](dev/VoxelCore.png) VoxelCore — Nintendo 3DS port
 
-## Latest release
+[![3DS Build](https://github.com/niazlv/voxelcore-3ds/actions/workflows/build-3ds.yml/badge.svg)](https://github.com/niazlv/voxelcore-3ds/actions/workflows/build-3ds.yml)
+[![Release](https://img.shields.io/github/v/release/niazlv/voxelcore-3ds)](https://github.com/niazlv/voxelcore-3ds/releases/latest)
 
-- [Download](https://github.com/MihailRis/VoxelCore/releases/latest) | [Скачать](https://github.com/MihailRis/VoxelCore/releases/latest)
-- [Documentation](https://github.com/MihailRis/VoxelCore/blob/release-0.31/doc/en/main-page.md) | [Документация](https://github.com/MihailRis/VoxelCore/blob/release-0.31/doc/ru/main-page.md)
+A port of [VoxelCore](https://github.com/MihailRis/voxelcore) — an open-source
+voxel engine by MihailRis — to the **original Nintendo 3DS**: ARM11 @ 268 MHz,
+128 MB RAM, PICA200 GPU, no OpenGL, no OpenAL, and a screen the size of a
+matchbox.
 
----
+This was made **just for fun**, to find out whether a modern desktop voxel
+engine can run on a 2011 handheld at all. It can.
 
-## Build project in Linux
+![banner](3ds/cia/banner.png)
 
-### Install libraries
+## Downloads
 
-#### Install EnTT
+- [`voxelcore3ds.3dsx`](https://github.com/niazlv/voxelcore-3ds/releases/latest) —
+  run via Homebrew Launcher, or open directly in the
+  [Azahar](https://azahar-emu.org/) emulator.
+- Every push also produces a fresh `voxelcore3ds` artifact in
+  [Actions](https://github.com/niazlv/voxelcore-3ds/actions/workflows/build-3ds.yml).
+- A CIA can be packaged with `3ds/cia/build_cia.sh` (requires makerom).
 
-Installing last version that supports C++17.
+## What works / what doesn't
 
-```sh
-git clone --branch v3.16.0 https://github.com/skypjack/entt.git
-cd entt
-mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DENTT_INSTALL=ON ..
-sudo make install
+| Feature | Status |
+|---|---|
+| World generation, loading, saving (SD card) | ✅ works |
+| Survival and creative modes | ✅ works |
+| Block placing / breaking, vertex lighting | ✅ works |
+| Engine GUI on the touch screen (inventory, hotbar, tabs) | ✅ works |
+| Tap-to-select hotbar, touch menu | ✅ works |
+| Entity models (drops, falling blocks, mobs) | ✅ works |
+| Item throwing (SELECT) | ✅ works |
+| Audio: NDSP backend, ogg via stb_vorbis | ✅ works |
+| Content packs from SD | ✅ works |
+| Lua scripting (LuaJIT interpreter, no-FFI fallbacks) | ✅ works |
+| Fog, dense-pass leaves alpha, underwater tint, backlight | ✅ works |
+| In-game chat rendering | ⚠️ broken (blank box on the bottom screen) |
+| CIA packaging in CI | ⚠️ manual only (makerom) |
+| Particles, 3D text, block wraps, post-effects | ❌ not ported |
+| Networking / multiplayer | ❌ not ported |
+| Advanced render (shadows, SSAO, clouds) | ❌ out of scope for this GPU |
+| Stereoscopic 3D on the top screen | ❌ not yet |
+| New 3DS speedup (804 MHz / L2) | ❌ not yet |
+
+Verified in Azahar (stable ~60 FPS UI, playable world at load distance 4).
+
+## How it differs from the desktop engine
+
+The engine core is used **as-is** — the port patches only 26 lines of engine
+code (guarded by `VC_PORT_3DS`). Everything else lives under [`3ds/`](3ds/):
+
+- **Renderer**: custom PICA200 renderer written against GPU registers
+  (no citro3d, no OpenGL). The engine's whole GUI stack (Batch2D, fonts,
+  DrawContext) renders on the bottom screen via `VC_NO_GL`.
+- **Audio**: NDSP backend plugged into the engine's
+  `VC_AUDIO_CUSTOM_BACKEND` hook instead of OpenAL.
+- **Memory profile**: chunk height 128 (instead of 256), lazy chunk pool,
+  24 px item icons — via the engine's build-time knobs. That's the
+  difference between running and OOM on 128 MB.
+- **Scripting**: LuaJIT in interpreter mode (no RWX pages on 3DS), with
+  pure-Lua fallbacks for everything that normally needs the FFI.
+
+## 3DS hardware actually used
+
+- **Both screens**: top — 3D world (400×240), bottom — full engine GUI (320×240)
+- **Touch screen** for all UI interaction (inventory, hotbar, menus)
+- **PICA200** vertex shaders (`3ds/shaders/*.v.pica`), native texture tiling
+- **DSP (NDSP)** for audio mixing (needs a dspfirm dump on real hardware)
+- **SD card** for worlds, content packs and logs; **RomFS** for engine assets
+- **HID**: buttons, D-pad, circle pad
+- Maybe someday: stereoscopic 3D, New 3DS clock boost, local wireless
+
+## Building
+
+Docker is the only requirement (devkitPro image is pulled automatically):
+
+```bash
+git clone --recurse-submodules https://github.com/niazlv/voxelcore-3ds.git
+cd voxelcore-3ds
+./3ds/build.sh
 ```
 
-> [!WARNING]
-> If you are using ALT Linux, do **not** use this EnTT installation method.
+Output: `3ds/build/voxelcore3ds.3dsx`. LuaJIT is cross-compiled automatically
+on first build (see [`3ds/build_luajit.sh`](3ds/build_luajit.sh) for the
+exact configuration). Port internals are described in
+[`3ds/README.md`](3ds/README.md).
 
-#### ALT Linux based distros
+## Relation to upstream
 
-```sh
-su -
-apt-get install entt-devel libglfw3-devel libGLEW-devel libglm-devel libpng-devel libvorbis-devel libopenal-devel libluajit-devel libstdc++13-devel-static libcurl-devel libfreetype-devel
-```
+`main` = upstream VoxelCore + a set of platform-independent fixes and
+portability mechanisms + the `3ds/` tree. The platform-independent part
+(alignment UB in gzip, null-deref fixes, building without OpenGL/OpenAL,
+Lua-without-FFI fallbacks, memory-profile build knobs, small-screen UI) was
+offered upstream as [MihailRis/voxelcore#889](https://github.com/MihailRis/voxelcore/pull/889);
+it was declined — additional platform support is not currently planned there —
+so those changes live in this repository (and in the
+[`portability`](https://github.com/niazlv/voxelcore/tree/portability) branch
+of my fork) instead.
 
-#### Debian based distros
+For the engine itself — documentation, content packs, scripting API — see
+the [upstream repository](https://github.com/MihailRis/voxelcore) and its
+[docs](https://github.com/MihailRis/VoxelCore/blob/release-0.31/doc/en/main-page.md).
 
-```sh
-sudo apt install libglfw3 libglfw3-dev libglew-dev libglm-dev libpng-dev libopenal-dev libluajit-5.1-dev libvorbis-dev libcurl4-openssl-dev libfreetype6-dev
-```
+## Credits
 
-> [!TIP]
-> CMake missing `LUA_INCLUDE_DIR` and `LUA_LIBRARIES` fix:
->
-> ```sh
-> sudo ln -s /usr/lib/x86_64-linux-gnu/libluajit-5.1.a /usr/lib/x86_64-linux-gnu/liblua5.1.a
-> sudo ln -s /usr/include/luajit-2.1 /usr/include/lua
-> ```
+- [MihailRis](https://github.com/MihailRis) — VoxelCore itself
+- devkitPro / libctru — 3DS toolchain
+- LuaJIT, EnTT, GLM, stb — bundled third-party libraries
 
-#### RHEL based distros
-
-```sh
-sudo dnf install glfw-devel glew-devel glm-devel libpng-devel libvorbis-devel openal-soft-devel luajit-devel libcurl-devel libfreetype-devel
-```
-
-#### Arch based distros
-
-If you use X11:
-
-```sh
-sudo pacman -S glfw-x11 glew glm libpng libvorbis openal luajit libcurl freetype2
-```
-
-If you use Wayland:
-
-```sh
-sudo pacman -S glfw-wayland glew glm libpng libvorbis openal luajit libcurl freetype2
-```
-
-And install EnTT:
-
-```sh
-yay -S entt
-```
-
-### Building engine with CMake
-
-```sh
-git clone --recursive https://github.com/MihailRis/VoxelCore.git
-cd VoxelCore
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-cmake --build . --parallel
-```
-
-> [!TIP]
-> Use `--parallel` to utilize all CPU cores during build.
-
----
-
-## Building project in macOS
-
-### Install libraries
-
-```sh
-brew install glfw3 glew glm libpng libvorbis lua luajit libcurl openal-soft skypjack/entt/entt freetype
-```
-
-> [!TIP]
-> If Homebrew fails to install `lua`, `luajit`, or `openal-soft`, download, compile, and install them manually.
-
-### Building engine with CMake
-
-```sh
-git clone --recursive https://github.com/MihailRis/VoxelCore.git
-cd VoxelCore
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-cmake --build . --parallel
-```
-
----
-
-## Building in Windows
-
-> [!NOTE]
-> Requirements: **vcpkg**, **CMake**, **Git**, and **Visual Studio** (with C++ tools).
-
-There are two options to use vcpkg:
-
-1. If you have Visual Studio installed, the **VCPKG_ROOT** environment variable is often already set in the **Developer Command Prompt for VS**.
-2. Otherwise, install **vcpkg** manually:
-
-```powershell
-cd C:\
-git clone https://github.com/microsoft/vcpkg.git
-cd vcpkg
-.\bootstrap-vcpkg.bat
-```
-
-Then set the `VCPKG_ROOT` environment variable and add it to `PATH`:
-
-```powershell
-$env:VCPKG_ROOT = "C:\vcpkg"
-$env:PATH = "$env:VCPKG_ROOT;$env:PATH"
-```
-
-> [!TIP]
-> For troubleshooting, refer to the official [vcpkg documentation](https://learn.microsoft.com/ru-ru/vcpkg/get_started/get-started?pivots=shell-powershell).
-
-After installing **vcpkg**, build the project:
-
-```powershell
-git clone --recursive https://github.com/MihailRis/VoxelCore.git
-cd VoxelCore
-cmake --preset default-vs-msvc-windows
-cmake --build --preset default-vs-msvc-windows
-```
-
-> [!NOTE]
-> Make sure your `CMakeUserPresets.json` (if used) contains the correct `VCPKG_ROOT` path.
-
----
-### Building with CLion (MinGW / Ninja)
-
-> [!NOTE]
-> Requirements: **vcpkg**, **Git**, and **CLion** (bundled with CMake, Ninja and MinGW toolchain).
-
-> [!WARNING]
-> Avoid installing tools in paths with spaces (e.g. `Program Files`).
-> This may break MinGW builds (especially `windres`).
-
-Install **vcpkg** manually as described in the Visual Studio section.
-
-
-#### Configure CLion
-Open the project in CLion and configure CMake profile:
-```text
-Settings → Build, Execution, Deployment → CMake
-```
-Reload CMake project and build the engine.
-
----
-
-## Build using Docker
-
-> [!NOTE]
-> First, install Docker Engine: [https://docs.docker.com/engine/install](https://docs.docker.com/engine/install)
-
-### On Linux
-
-#### Step 1. Build Docker image
-
-```sh
-docker build -t voxel-engine .
-```
-
-#### Step 2. Build project inside container
-
-```sh
-docker run --rm -it -v "$(pwd):/project" voxel-engine bash -c "cmake -DCMAKE_BUILD_TYPE=Release -Bbuild && cmake --build build --parallel"
-```
-
-#### Step 3. Run the application (requires X11 forwarding)
-
-```sh
-docker run --rm -it \
-  -v "$(pwd):/project" \
-  -v /tmp/.X11-unix:/tmp/.X11-unix \
-  -v "$XAUTHORITY:/home/user/.Xauthority:ro" \
-  -e DISPLAY="$DISPLAY" \
-  --network=host \
-  voxel-engine ./build/VoxelEngine
-```
-
-### On Windows
-
-> [!NOTE]
-> You need an X server like **VcXsrv** to display the GUI.
-
-#### Step 1. Install and run VcXsrv
-
-Launch with:
-```powershell
-.\vcxsrv.exe :0 -multiwindow -ac
-```
-
-#### Step 2. Build Docker image
-
-```powershell
-docker build -t voxel-engine .
-```
-
-#### Step 3. Build project
-
-```powershell
-docker run --rm -it -v "${PWD}:/project" voxel-engine bash -c "cmake -DCMAKE_BUILD_TYPE=Release -Bbuild && cmake --build build --parallel"
-```
-
-#### Step 4. Run the application
-
-```powershell
-docker run --rm -it -v "${PWD}:/project" -e DISPLAY=host.docker.internal:0.0 --network=host voxel-engine ./build/VoxelEngine
-```
+License: same as upstream VoxelCore.

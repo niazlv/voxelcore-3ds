@@ -1,13 +1,8 @@
-# VoxelCore — Nintendo 3DS port
+# VoxelCore 3DS port — internals
 
-Port of [VoxelCore](https://github.com/MihailRis/voxelcore) to the original
-Nintendo 3DS (ARM11, 128 MB RAM, PICA200). The engine core is used as-is from
-the repository root; everything 3DS-specific lives in this directory.
-
-What works: world generation and loading, survival/creative worlds, the
-engine's own GUI on the bottom screen (touch), inventory, hotbar tap-select,
-block placing/breaking with vertex lighting, NDSP audio (ogg via stb_vorbis),
-content packs from SD.
+Everything 3DS-specific lives in this directory; the engine core is used
+as-is from the repository root. For the overview, feature status and
+downloads see the [root README](../README.md).
 
 ## Building
 
@@ -34,6 +29,23 @@ Azahar). `3ds/cia/build_cia.sh` packages a CIA (needs makerom).
 
 Platform-independent fixes and mechanisms discovered during the port
 (alignment UB in gzip, building without OpenGL/OpenAL, Lua without FFI,
-memory-profile build knobs, small-screen UI) were submitted upstream:
-[MihailRis/voxelcore#889](https://github.com/MihailRis/voxelcore/pull/889).
-The port patches only 26 lines of engine code, guarded by `VC_PORT_3DS`.
+memory-profile build knobs, small-screen UI) were submitted upstream as
+[MihailRis/voxelcore#889](https://github.com/MihailRis/voxelcore/pull/889)
+(declined; they live in this repo's history instead).
+The port itself patches only 26 lines of engine code, guarded by
+`VC_PORT_3DS` (touch-input frame routing in `src/frontend/hud.cpp`,
+path logging in `src/engine/EnginePaths.cpp`).
+
+Build-time defines used by the port (see `CMakeLists.txt`): `VC_NO_GL`,
+`VC_NO_AL`, `VC_AUDIO_CUSTOM_BACKEND`, `VC_CHUNK_H=128`,
+`VC_ITEM_ICON_SIZE=24`, `VC_CHUNKS_POOL_SIZE=0`, `VC_PORT_3DS`.
+
+## LuaJIT configuration
+
+LuaJIT runs as a plain interpreter: the JIT needs writable+executable
+pages, which the 3DS doesn't grant. The FFI is present but `ffi.C` cannot
+resolve symbols in a statically linked homebrew binary, so the engine's
+pure-Lua fallbacks kick in. `build_luajit.sh` reproduces the exact library
+configuration (`TARGET_SYS=Other`, `LUAJIT_DISABLE_JIT`,
+`LUAJIT_USE_SYSMALLOC`, `LUAJIT_SECURITY_PRNG=0`, armv6k hard-float,
+32-bit host buildvm).
