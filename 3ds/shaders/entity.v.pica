@@ -1,0 +1,43 @@
+; VoxelCore 3DS: entity model vertex shader (MainBatchVertex)
+; inputs: v0 = position (world-space xyz), v1 = uv, v2 = tint (rgb float),
+;         v3 = light (torch rgb + sky in alpha, raw bytes 0..255),
+;         v4 = normal/emission (unused: directional shading is
+;              premultiplied CPU-side by ModelBatch)
+; uniforms: mvp (proj*view - vertices are already in world space),
+;           skylight (rgb sky color)
+
+.fvec mvp[4]
+.fvec skylight
+
+.constf ones(1.0, 1.0, 1.0, 1.0)
+.constf inv255(0.003921569, 0.003921569, 0.003921569, 0.003921569)
+
+.out outpos position
+.out outclr color
+.out outtex0 texcoord0
+
+.entry vmain
+.proc vmain
+    mov r0.xyz, v0
+    mov r0.w, ones
+
+    dp4 outpos.x, mvp[0], r0
+    dp4 outpos.y, mvp[1], r0
+    dp4 outpos.z, mvp[2], r0
+    dp4 outpos.w, mvp[3], r0
+
+    ; light = min(torch.rgb + sky * light.a, 1) * tint
+    mov r1, v3
+    mul r1, inv255, r1
+    mov r2.xyz, skylight.xyz
+    mul r2.xyz, r1.wwww, r2.xyz
+    add r1.xyz, r1.xyz, r2.xyz
+    min r1.xyz, ones.xyz, r1.xyz
+    mul r1.xyz, v2.xyz, r1.xyz
+    mov r1.w, ones.w
+    mov outclr, r1
+
+    mov outtex0, v1
+
+    end
+.end

@@ -1,0 +1,24 @@
+; VoxelCore 3DS: 2D UI vertex shader
+; v0 = pos (xy), v1 = uv, v2 = color (rgba float)
+.fvec proj[4]
+.constf consts(0.0, 1.0, 0.0, 0.0)
+
+.out outpos position
+.out outclr color
+.out outtex0 texcoord0
+
+.entry vmain
+.proc vmain
+    mov r0.xy, v0.xy
+    mov r0.z, consts.x
+    mov r0.w, consts.y
+
+    dp4 outpos.x, proj[0], r0
+    dp4 outpos.y, proj[1], r0
+    dp4 outpos.z, proj[2], r0
+    dp4 outpos.w, proj[3], r0
+
+    mov outclr, v2
+    mov outtex0, v1
+    end
+.end
