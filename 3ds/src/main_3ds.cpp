@@ -140,6 +140,8 @@ int main(int argc, char** argv) {
         EngineSettings& settings = engine.getSettings();
         settings.chunks.loadDistance.set(4);
         settings.chunks.padding.set(1);
+        // touch screen: tapping a hotbar slot selects it
+        settings.ui.hotbarInteractive.set(true);
         // leaves with a real alpha channel (the opaque fallback texture is
         // used otherwise); their geometry goes to the dense index buffer
         settings.graphics.denseRender.set(true);

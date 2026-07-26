@@ -333,7 +333,8 @@ public:
     }
 };
 
-Backend* create_ndsp_backend() {
+// the engine's VC_AUDIO_CUSTOM_BACKEND hook (see src/audio/audio.cpp)
+Backend* create_custom_backend(AudioSettings& settings) {
     auto backend = NDSPAudio::create();
     return backend.release();
 }

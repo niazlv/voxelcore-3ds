@@ -371,9 +371,16 @@ void Hud::update(bool visible) {
     }
     contentAccessPanel->setSize(glm::vec2(caSize.x, windowSize.y));
     contentAccess->setMinSize(glm::vec2(1, windowSize.y));
+#ifdef VC_PORT_3DS
+    // 240px-tall screen: the open inventory leaves no room for the
+    // hotbar row regardless of the content panel
+    hotbarView->setVisible(
+        visible && !inventoryOpen && !(secondUI && !inventoryView));
+#else
     hotbarView->setVisible(
         visible && !(secondUI && !inventoryView) &&
         !(compact && inventoryOpen));
+#endif
     darkOverlay->setVisible(isMenuOpen);
     menu.setVisible(isMenuOpen);
 
@@ -562,7 +569,14 @@ void Hud::closeInventory() {
         }
     }
     cleanup();
+#ifdef VC_PORT_3DS
+    // touch UI: the bottom screen must keep receiving taps after the
+    // inventory closes (tap-to-select hotbar). Clearing the active frame
+    // stops GUI::act from routing cursor input at all.
+    gui.setActiveFrame(GUI::CORE_MAIN);
+#else
     gui.setActiveFrame("");
+#endif
 }
 
 void Hud::add(const HudElement& element, const dv::value& argsArray) {
@@ -754,7 +768,11 @@ void Hud::setPause(bool pause) {
     
     if (!pause && menu.hasOpenPage()) {
         menu.reset();
+#ifdef VC_PORT_3DS
+        gui.setActiveFrame(GUI::CORE_MAIN);
+#else
         gui.setActiveFrame("");
+#endif
     }
     if (pause && !menu.hasOpenPage()) {
         menu.setPage("pause");

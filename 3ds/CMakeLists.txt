@@ -255,9 +255,14 @@ target_include_directories(voxelcore3ds PRIVATE
 target_compile_definitions(voxelcore3ds PRIVATE
     VC_BUILD_NAME="3ds-port"
     VC_NO_GL
-    VC_SMALL_MEMORY
     VC_NO_AL
-    VC_NDSP
+    VC_AUDIO_CUSTOM_BACKEND
+    # memory/screen profile (see src/constants.hpp, src/voxels/GlobalChunks.cpp)
+    VC_CHUNK_H=128
+    VC_ITEM_ICON_SIZE=24
+    VC_CHUNKS_POOL_SIZE=0
+    # port-specific patches to engine sources (kept out of mainline)
+    VC_PORT_3DS
     GLM_ENABLE_EXPERIMENTAL
 )
 

@@ -63,9 +63,17 @@ EnginePaths::EnginePaths(CoreParameters& params)
         );
     }
     logger.info() << "executable path: " << platform::get_executable_path().string();
+#ifdef VC_PORT_3DS
+    // newlib device prefixes (sdmc:/, romfs:/) are not POSIX roots;
+    // std::filesystem canonicalization is unreliable with them
+    logger.info() << "resources folder: " << resourcesFolder.u8string();
+    logger.info() << "user files folder: " << userFilesFolder.u8string();
+    logger.info() << "project folder: " << projectFolder.u8string();
+#else
     logger.info() << "resources folder: " << fs::weakly_canonical(resourcesFolder).u8string();
     logger.info() << "user files folder: " << fs::weakly_canonical(userFilesFolder).u8string();
     logger.info() << "project folder: " << fs::weakly_canonical(projectFolder).u8string();
+#endif
     
     if (!io::is_directory(CONTENT_FOLDER)) {
         io::create_directories(CONTENT_FOLDER);
